@@ -9,7 +9,6 @@ local ipairs = ipairs
 local tostring = tostring
 local floor = math.floor
 local string_rep = string.rep
-local string_find = string.find
 local string_match = string.match
 local string_format = string.format
 local concat = table.concat
@@ -266,12 +265,14 @@ local function _len(obj) return "#" .. obj end
 local function _index(obj, k) return obj .. "[" .. k .. "]" end
 
 
-function _M.new(schema, lib)
+function _M.new(schema, lib, name)
+    name = name or "data"
     local m = {
         _indent = 0,
         _code = {},
         _lib = lib,
-        _var = Variable.new("data"),
+        _var = Variable.new(name),
+        _name = name,
         _vars = 0,
         _pool = {},
         _variables = {},
@@ -488,7 +489,7 @@ function _M.generate_specific(self, entry, typ)
         return
     end
 
-    local generate = function()
+    local function generate()
         for _, k in ipairs(has) do
             self["_generate_" .. k[2]](self, self._schema[k[1]])
         end
@@ -715,7 +716,22 @@ end
 
 
 function _M._generate_dependencies(self, dependencies)
-    local generate_list_dependencies = function(prop, dep)
+    local function generate_dependency(prop, dep)
+        dep = dump(dep)
+        self:generate_code_block(
+            _if(_op(_index(self._var(), dep), "==", "nil")),
+            function()
+                self:generate_error(
+                    prop, "depends on", _index(tostring(self._var), dep))
+            end
+        )
+    end
+
+    local function generate_list_dependencies(prop, dep)
+        if #dep == 1 then
+            return generate_dependency(prop, dep[1])
+        end
+
         self:generate_code_block(
             _for(_call("ipairs", dump(dep)), "_", "k"),
             function()
@@ -731,7 +747,7 @@ function _M._generate_dependencies(self, dependencies)
         )
     end
 
-    local generate_schema_dependencies = function(prop, schema)
+    local function generate_schema_dependencies(prop, schema)
         for k, v in pairs(schema) do
             local var = self:get_variable(_index(tostring(self._var), dump(k)))
             self:emit(_assign(var(), _index(self._var(), dump(k))))
@@ -757,12 +773,7 @@ function _M._generate_dependencies(self, dependencies)
                 elseif is_tbl(v) and v.properties then
                     generate_schema_dependencies(prop, v.properties)
                 else
-                    self:generate_code_block(
-                        _if(_op(_index(self._var(), dump(v)), "=="), "nil"),
-                        function()
-                            self:generate_error(prop, "depends on", dump(v))
-                        end
-                    )
+                    generate_dependency(prop, v)
                 end
             end
         )
@@ -1013,11 +1024,17 @@ end
 function _M._generate_properties(self, properties)
     local parent = self._schema
     local keys = self:get_variable()
-    local root = self:get_variable(tostring(self._var))
+    local is_root = tostring(self._var) == self._name
+    local root
+
+    if is_root then
+        root = self._var
+    else
+        root = self:get_variable(tostring(self._var))
+        self:emit(_assign(root(), self._var()))
+    end
 
     self:emit(_assign(keys(), "{}"))
-    self:emit(_assign(root(), self._var()))
-
     self:generate_code_block(
         _for(_call("pairs", root()), "k"),
         function()
@@ -1025,28 +1042,32 @@ function _M._generate_properties(self, properties)
         end
     )
 
+    local function generate_properties(schema, var, key)
+        self:generate_code_block(
+            _if(_index(keys(), key)),
+            function()
+                self:emit(_assign(_index(keys(), key), "nil"))
+                self:generate(var, schema)
+            end,
+            false
+        )
+        if schema.default ~= nil then
+            self:generate_code_block(
+                "else",
+                function()
+                    self:emit(_assign(self._var(), dump(schema.default)))
+                end,
+                false
+            )
+        end
+        self:emit("end")
+    end
+
     if parent.properties then
         for key, schema in pairs(properties) do
             local var = Variable.new(
                 _index(root(), dump(key)), _index(tostring(root), dump(key)))
-            self:generate_code_block(
-                _if(_index(keys(), dump(key))),
-                function()
-                    self:emit(_assign(_index(keys(), dump(key)), "nil"))
-                    self:generate(var, schema)
-                end,
-                false
-            )
-            if schema.default ~= nil then
-                self:generate_code_block(
-                    "else",
-                    function()
-                        self:emit(_assign(self._var(), dump(schema.default)))
-                    end,
-                    false
-                )
-            end
-            self:emit("end")
+            generate_properties(schema, var, dump(key))
         end
     end
 
@@ -1061,10 +1082,10 @@ function _M._generate_properties(self, properties)
                                  _call("base.re_find",
                                        "k", dump(pattern), dump("jo")))),
                         function()
-                            self:emit(_assign(_index(keys(), "k"), "nil"))
                             local var = Variable.new(
                                 _index(root(), "k"),
                                 _index(tostring(root), dump(pattern)))
+                            self:emit(_assign(_index(keys(), "k"), "nil"))
                             self:generate(var, schema)
                         end
                     )
@@ -1093,8 +1114,11 @@ function _M._generate_properties(self, properties)
         self:free_variable(var)
     end
 
+    if not is_root then
+        self:free_variable(root)
+    end
+
     self:free_variable(keys)
-    self:free_variable(root)
 end
 
 

@@ -25,6 +25,7 @@ local function is_str(obj) return type(obj) == "string" end
 local function is_num(obj) return type(obj) == "number" end
 local function is_tbl(obj) return type(obj) == "table" end
 local function is_bool(obj) return type(obj) == "boolean" end
+local function is_nil(obj) return obj == nil end
 local function is_null(obj) return obj == cjson.null end
 local function is_int(obj) return is_num(obj) and floor(obj) == obj end
 
@@ -233,6 +234,7 @@ local mapping = {
 }
 
 local Base = {
+    is_nil = is_nil,
     is_null = is_null,
     is_string = is_str,
     is_number = is_num,

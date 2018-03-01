@@ -361,9 +361,11 @@ function _M.generate_code_block(self, head, generator, done)
 
     self._indent = indent
 
-    if done ~= false then
-        self:emit("end")
+    if done == false then
+        return
     end
+
+    self:emit(done or "end")
 end
 
 
@@ -932,10 +934,8 @@ function _M._generate_any_of(self, schemas)
                 )
                 self:free_variable(pass)
             end
-        end,
-        false
+        end
     )
-    self:emit("end")
     self:generate_code_block(
         _if(_not(_call(ok()))),
         function()
@@ -970,9 +970,8 @@ function _M._generate_one_of(self, schemas)
                         self:generate(nil, schema)
                         self:emit(_assign(count(), _op(count(), "+", "1")))
                     end,
-                    false
+                    "end)()"
                 )
-                self:emit("end)()")
                 self:generate_code_block(
                     _if(_op(count(), ">", "1")),
                     function()

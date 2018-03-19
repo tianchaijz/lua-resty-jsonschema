@@ -55,16 +55,16 @@ local Variable = {}
 Variable.__index = Variable
 
 Variable.__tostring = function(self)
-    return self._alias or self._name
+    return self._alias or self._ref
 end
 
 Variable.__call = function(self)
-    return self._name
+    return self._ref
 end
 
 
-function Variable.new(name, alias, attributes)
-    local var = { _name = name, _alias = alias }
+function Variable.new(ref, alias, attributes)
+    local var = { _ref = ref, _alias = alias }
     if attributes then
         for k, v in pairs(attributes) do
             var[k] = v
@@ -271,8 +271,8 @@ function _M.new(schema, lib, name)
         _indent = 0,
         _code = {},
         _lib = lib,
-        _var = Variable.new(name),
         _name = name,
+        _var = Variable.new("data", name),
         _vars = 0,
         _pool = {},
         _variables = {},

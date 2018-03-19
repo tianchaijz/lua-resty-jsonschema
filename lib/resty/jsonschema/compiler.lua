@@ -845,36 +845,57 @@ end
 
 function _M._generate_items(self, items)
     local parent = self._schema
-    local root = self:get_variable(tostring(self._var))
+    local is_root = tostring(self._var) == self._name
+    local root
 
-    self:emit(_assign(root(), self._var()))
+    if is_root then
+        root = self._var
+    else
+        root = self:get_variable(tostring(self._var))
+        self:emit(_assign(root(), self._var()))
+    end
+
     self:set_variable_length(root)
-    self._var.length = root.length
+
+    local function generate(i, schema)
+        local var = Variable.new(_index(root(), i), _index(tostring(root), i))
+        local default = schema.default
+
+        schema.default = nil
+
+        local function set_default()
+            self:emit(_assign(var(), dump(default)))
+        end
+
+        if next(schema) then
+            self:generate_code_block(
+                _if(_op(root:len(), ">", dump(i - 1))),
+                function()
+                    self:generate(var, schema)
+                end,
+                false
+            )
+            if default ~= nil then
+                self:generate_code_block(
+                    "else",
+                    set_default,
+                    false
+                )
+            end
+            self:emit("end")
+        elseif default ~= nil then
+            self:generate_code_block(
+                _if(_op(root:len(), "<=", dump(i - 1))),
+                set_default
+            )
+        end
+
+        schema.default = default
+    end
 
     if is_array(items) and #items > 0 then
         for i, schema in ipairs(items) do
-            if next(schema) then
-                self:generate_code_block(
-                    _if(_op(root:len(), ">", dump(i - 1))),
-                    function()
-                        local var = Variable.new(
-                            _index(root(), i), _index(tostring(root), i))
-                        self:generate(var, schema)
-                    end,
-                    false
-                )
-                if schema.default ~= nil then
-                    self:generate_code_block(
-                        "else",
-                        function()
-                            self:emit(_assign(self._var(),
-                                      dump(schema.default)))
-                        end,
-                        false
-                    )
-                end
-                self:emit("end")
-            end
+            generate(i, schema)
         end
     elseif is_tbl(items) and next(items) then
         self:generate_code_block(
@@ -908,7 +929,9 @@ function _M._generate_items(self, items)
         )
     end
 
-    self:free_variable(root)
+    if not is_root then
+        self:free_variable(root)
+    end
 end
 
 
@@ -999,7 +1022,7 @@ end
 function _M._generate_min_properties(self, properties)
     self:set_variable_properties()
     self:generate_code_block(
-        _if(_op(self._var.properties, "<", properties)),
+        _if(_op(self._var.properties, "<", dump(properties))),
         function()
             self:generate_error(tostring(self._var),
                 "must contain at least", properties, "properties")
@@ -1011,7 +1034,7 @@ end
 function _M._generate_max_properties(self, properties)
     self:set_variable_properties()
     self:generate_code_block(
-        _if(_op(self._var.properties, ">", properties)),
+        _if(_op(self._var.properties, ">", dump(properties))),
         function()
             self:generate_error(tostring(self._var),
                 "must contain less than or equal to", properties, "properties")
@@ -1054,7 +1077,8 @@ function _M._generate_properties(self, properties)
             self:generate_code_block(
                 "else",
                 function()
-                    self:emit(_assign(self._var(), dump(schema.default)))
+                    self:emit(_assign(_index(self._var(), key),
+                                      dump(schema.default)))
                 end,
                 false
             )

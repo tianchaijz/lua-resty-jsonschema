@@ -170,13 +170,36 @@ local schema = {
         num = {
             type = "number",
             validator = "positive"
+        },
+        x = {
+            default = 2,
         }
     }
 }
 
-local js = jsonschema.new(schema, { positive = function(n) return n > 0 end })
+local js = jsonschema.new(schema, { positive = function(n) return n > 0 end }, "test")
 local jv = js:compile()
-local ok, err = jv({ num = 1 })
+local obj  = { num = 1 }
+local ok, err = jv(obj)
 assert(ok, err)
-ok, err = jv({ num = -1 })
+assert(obj.x == 2, obj.x)
+
+obj.num = -1
+obj.x = 3
+ok, err = jv(obj)
 assert(not ok, err)
+assert(obj.x == 3)
+
+schema = {
+    items = {
+        { type = "number" },
+        { default = 2 },
+    }
+}
+
+obj = { 1 }
+js = jsonschema.new(schema)
+jv = js:compile()
+ok, err = jv(obj)
+assert(ok)
+assert(obj[2] == 2)

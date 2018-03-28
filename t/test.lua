@@ -113,6 +113,7 @@ local function load_test()
             if skipped == true then
                 print("skip suite: " .. suite.description)
             else
+                print("add suite: " .. suite.description)
                 local schema = cjson.encode(suite.schema)
                 local ok, js = pcall(jsonschema.new, suite.schema)
                 if not ok then
@@ -194,12 +195,19 @@ schema = {
     items = {
         { type = "number" },
         { default = 2 },
-    }
+        { enum = { cjson.null } },
+    },
 }
 
 obj = { 1 }
 js = jsonschema.new(schema)
 jv = js:compile()
+
 ok, err = jv(obj)
 assert(ok)
 assert(obj[2] == 2)
+
+obj = { 1, 3, cjson.null }
+ok, err = jv(obj)
+assert(ok)
+assert(obj[2] == 3)

@@ -91,7 +91,7 @@ function Dump.value(v)
     if is_str(v) then
         return string_format("%q", v)
     elseif is_null(v) then
-        return "cjson.null"
+        return "base.null"
     elseif is_tbl(v) then
         return Dump.tostring(v)
     end
@@ -246,6 +246,7 @@ local Base = {
     serialize = serialize,
     re_find = re_find,
     table_len = table_len,
+    null = cjson.null,
 }
 
 _M.Base = Base

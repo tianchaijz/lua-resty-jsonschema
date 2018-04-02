@@ -628,7 +628,7 @@ function _M._generate_min_length(self, n)
         _if(_op(self._var:len(), "<", dump(n))),
         function()
             self:generate_error(tostring(self._var),
-                                "be longer than or equal to", dump(n),
+                                "must be longer than or equal to", dump(n),
                                 "characters")
         end
     )
@@ -640,7 +640,7 @@ function _M._generate_max_length(self, n)
         _if(_op(self._var:len(), ">", dump(n))),
         function()
             self:generate_error(tostring(self._var),
-                                "be shorter than or equal to", dump(n),
+                                "must be shorter than or equal to", dump(n),
                                 "characters")
         end
     )

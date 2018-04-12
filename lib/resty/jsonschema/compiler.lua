@@ -6,6 +6,7 @@ local type = type
 local next = next
 local pairs = pairs
 local ipairs = ipairs
+local assert = assert
 local tostring = tostring
 local floor = math.floor
 local string_rep = string.rep
@@ -516,7 +517,11 @@ function _M.generate(self, var, schema)
     local _schema, _var = self._schema, self._var
 
     if var then self._var = var end
-    if schema then self._schema = schema end
+    if schema ~= nil then self._schema = schema end
+
+    assert(is_tbl(self._schema), string_format(
+           "schema must be table, but got: %s, when: %s",
+           tostring(self._schema), tostring(self._var)))
 
     for _, v in ipairs(mapping) do
         if is_tbl(v[1]) then

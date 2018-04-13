@@ -1049,7 +1049,7 @@ function _M._generate_max_properties(self, properties)
 end
 
 
-function _M._generate_properties(self, properties)
+function _M._generate_properties(self)
     local parent = self._schema
     local keys = self:get_variable()
     local is_root = tostring(self._var) == self._name
@@ -1093,7 +1093,7 @@ function _M._generate_properties(self, properties)
     end
 
     if parent.properties then
-        for key, schema in pairs(properties) do
+        for key, schema in pairs(parent.properties) do
             local var = Variable.new(
                 _index(root(), dump(key)), _index(tostring(root), dump(key)))
             generate_properties(schema, var, dump(key))
@@ -1101,8 +1101,7 @@ function _M._generate_properties(self, properties)
     end
 
     if parent.patternProperties then
-        properties = parent.patternProperties
-        for pattern, schema in pairs(properties) do
+        for pattern, schema in pairs(parent.patternProperties) do
             self:generate_code_block(
                 _for(_call("pairs", root()), "k"),
                 function()

@@ -211,3 +211,35 @@ obj = { 1, 3, cjson.null }
 ok, err = jv(obj)
 assert(ok)
 assert(obj[2] == 3)
+
+schema = {
+    type = "object",
+    properties = {
+        foo = {
+            type = "object",
+            patternProperties = {
+                ["^bar"] = {
+                    type = "object",
+                    properties = {
+                        baz = { type = "string", },
+                    },
+                    required = { "baz", },
+                },
+            },
+        },
+    },
+}
+
+obj = {
+    foo = {
+        bar1 = {
+            baz = "hi"
+        }
+    }
+}
+
+js = jsonschema.new(schema)
+jv = js:compile()
+
+ok, err = jv(obj)
+assert(ok)

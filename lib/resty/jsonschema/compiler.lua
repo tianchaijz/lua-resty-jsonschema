@@ -309,6 +309,11 @@ function _M.code(self)
 end
 
 
+function _M.k(self)
+    return "k" .. self._indent
+end
+
+
 function _M.compile(self)
     local code = self:code()
     local chunk, err = loadstring(code)
@@ -680,13 +685,14 @@ function _M._generate_unique_items(self, unique)
         return
     end
 
+    local k = self:k()
     local mem = self:get_variable()
 
     self:emit(_assign(mem(), "{}"))
     self:generate_code_block(
-        _for(_call("ipairs", self._var()), "_", "k"),
+        _for(_call("ipairs", self._var()), "_", k),
         function()
-            self:emit(_assign("local id", _call("base.serialize", "k")))
+            self:emit(_assign("local id", _call("base.serialize", k)))
             self:generate_code_block(
                 _if(_index(mem(), "id")),
                 function()
@@ -707,12 +713,14 @@ end
 
 
 function _M._generate_required(self, required)
+    local k = self:k()
+
     required = dump(required)
     self:generate_code_block(
-        _for(_call("ipairs", required), "_", "k"),
+        _for(_call("ipairs", required), "_", k),
         function()
             self:generate_code_block(
-                _if(_op(_index(self._var(), "k"), "==", "nil")),
+                _if(_op(_index(self._var(), k), "==", "nil")),
                 function()
                     self:generate_error(tostring(self._var), "must contain",
                                         required, "properties")
@@ -740,11 +748,12 @@ function _M._generate_dependencies(self, dependencies)
             return generate_dependency(prop, dep[1])
         end
 
+        local k = self:k()
         self:generate_code_block(
-            _for(_call("ipairs", dump(dep)), "_", "k"),
+            _for(_call("ipairs", dump(dep)), "_", k),
             function()
                 self:generate_code_block(
-                    _if(_op(_index(self._var(), "k"), "==", "nil")),
+                    _if(_op(_index(self._var(), k), "==", "nil")),
                     function()
                         self:generate_error(
                             prop, "depends on",
@@ -1051,6 +1060,7 @@ end
 
 function _M._generate_properties(self)
     local parent = self._schema
+    local k = self:k()
     local keys = self:get_variable()
     local is_root = tostring(self._var) == self._name
     local root
@@ -1064,9 +1074,9 @@ function _M._generate_properties(self)
 
     self:emit(_assign(keys(), "{}"))
     self:generate_code_block(
-        _for(_call("pairs", root()), "k"),
+        _for(_call("pairs", root()), k),
         function()
-            self:emit(_assign(keys() .. "[k]", "true"))
+            self:emit(_assign(_index(keys(), k), "true"))
         end
     )
 
@@ -1103,17 +1113,17 @@ function _M._generate_properties(self)
     if parent.patternProperties then
         for pattern, schema in pairs(parent.patternProperties) do
             self:generate_code_block(
-                _for(_call("pairs", root()), "k"),
+                _for(_call("pairs", root()), k),
                 function()
                     self:generate_code_block(
-                        _if(_and(_call("base.is_string", "k"),
+                        _if(_and(_call("base.is_string", k),
                                  _call("base.re_find",
-                                       "k", dump(pattern), dump("jo")))),
+                                       k, dump(pattern), dump("jo")))),
                         function()
                             local var = Variable.new(
-                                _index(root(), "k"),
+                                _index(root(), k),
                                 _index(tostring(root), dump(pattern)))
-                            self:emit(_assign(_index(keys(), "k"), "nil"))
+                            self:emit(_assign(_index(keys(), k), "nil"))
                             self:generate(var, schema)
                         end
                     )
@@ -1133,9 +1143,9 @@ function _M._generate_properties(self)
     elseif is_tbl(parent.additionalProperties) then
         local var = self:get_variable(_index(tostring(root), "?"))
         self:generate_code_block(
-            _for(_call("pairs", keys()), "k"),
+            _for(_call("pairs", keys()), k),
             function()
-                self:emit(_assign(var(), _index(root(), "k")))
+                self:emit(_assign(var(), _index(root(), k)))
                 self:generate(var, parent.additionalProperties)
             end
         )

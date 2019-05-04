@@ -52,35 +52,30 @@ local function is_array(obj) return is_tbl(obj) and table_type(obj) >= 0 end
 local function is_object(obj) return is_tbl(obj) and table_type(obj) <= 0 end
 
 
-local Variable = {}
-Variable.__index = Variable
+local Var = {}
 
-Variable.__tostring = function(self)
-    return self._alias or self._ref
-end
-
-Variable.__call = function(self)
-    return self._ref
-end
+Var.__index = Var
+Var.__call = function(self) return self._ref end
+Var.__tostring = function(self) return self._alias or self._ref end
 
 
-function Variable.new(ref, alias, attributes)
+function Var.new(ref, alias, attributes)
     local var = { _ref = ref, _alias = alias }
     if attributes then
         for k, v in pairs(attributes) do
             var[k] = v
         end
     end
-    return setmetatable(var, Variable)
+    return setmetatable(var, Var)
 end
 
 
-function Variable.set_alias(self, alias)
+function Var.set_alias(self, alias)
     self._alias = alias
 end
 
 
-function Variable.len(self)
+function Var.len(self)
     return self.length or "#" .. self()
 end
 
@@ -186,7 +181,7 @@ end
 local _M = {
     _VERSION = "0.01",
 }
-local mt = { __index = _M }
+local _mt = { __index = _M }
 
 local mapping = {
     { "type", "type" },
@@ -274,14 +269,14 @@ function _M.new(schema, lib, name)
         _code = {},
         _lib = lib,
         _name = name,
-        _var = Variable.new("data", name),
-        _vars = 0,
+        _var = Var.new("data", name),
+        _nvar = 0,
+        _vars = {},
         _pool = {},
-        _variables = {},
         _schema = schema,
     }
 
-    setmetatable(m, mt)
+    setmetatable(m, _mt)
     m:generate_function()
 
     return m
@@ -293,12 +288,12 @@ function _M.code(self)
         return self._program
     end
 
-    if self._vars > 0 then
-        local variables = {}
-        for i = 1, self._vars do
-            variables[i] = "_" .. i
+    if self._nvar > 0 then
+        local vars = {}
+        for i = 1, self._nvar do
+            vars[i] = "_" .. i
         end
-        self._code[3] = self._code[3] .. "local " .. concat(variables, ", ")
+        self._code[3] = self._code[3] .. "local " .. concat(vars, ", ")
     else
         table_remove(self._code, 3)
     end
@@ -338,7 +333,7 @@ function _M.generate_function(self)
             self:generate_code_block(
                 "local validate = function(data, base, lib, ctx)",
                 function()
-                    self:emit("") -- place holder for variables
+                    self:emit("") -- place holder for vars
                     self:generate()
                     self:emit("return true")
                 end
@@ -418,15 +413,15 @@ end
 
 
 function _M.get_variable(self, alias)
-    local idx = self._variables[0]
+    local idx = self._vars[0]
     if idx then
-        self._variables[0] = self._variables[idx]
+        self._vars[0] = self._vars[idx]
     else
-        idx = #self._variables + 1
-        self._vars = idx
+        idx = #self._vars + 1
+        self._nvar = idx
     end
 
-    self._variables[idx] = true
+    self._vars[idx] = true
 
     local pool = self._pool[self._indent]
     if not pool then
@@ -436,13 +431,13 @@ function _M.get_variable(self, alias)
 
     pool[idx] = true
 
-    return Variable.new("_" .. idx, alias, { idx = idx })
+    return Var.new("_" .. idx, alias, { idx = idx })
 end
 
 
 function _M.do_free_variable(self, idx)
-    self._variables[idx] = self._variables[0]
-    self._variables[0] = idx
+    self._vars[idx] = self._vars[0]
+    self._vars[0] = idx
 
     local pool = self._pool[self._indent]
     if pool then
@@ -873,7 +868,7 @@ function _M._generate_items(self, items)
     self:set_variable_length(root)
 
     local function generate(i, schema)
-        local var = Variable.new(_index(root(), i), _index(tostring(root), i))
+        local var = Var.new(_index(root(), i), _index(tostring(root), i))
         local default = schema.default
 
         schema.default = nil
@@ -916,7 +911,7 @@ function _M._generate_items(self, items)
         self:generate_code_block(
             _for(_call("ipairs", root()), "_", "elem"),
             function()
-                local var = Variable.new("elem", _index(tostring(root), "?"))
+                local var = Var.new("elem", _index(tostring(root), "?"))
                 self:generate(var, items)
             end
         )
@@ -937,7 +932,7 @@ function _M._generate_items(self, items)
         self:generate_code_block(
             _for_assign("i", #items + 1, root:len(), 1),
             function()
-                local var = Variable.new(
+                local var = Var.new(
                     _index(root(), "i"), _index(tostring(root), "?"))
                 self:generate(var, parent.additionalItems)
             end
@@ -1104,7 +1099,7 @@ function _M._generate_properties(self)
 
     if parent.properties then
         for key, schema in pairs(parent.properties) do
-            local var = Variable.new(
+            local var = Var.new(
                 _index(root(), dump(key)), _index(tostring(root), dump(key)))
             generate_properties(schema, var, dump(key))
         end
@@ -1120,7 +1115,7 @@ function _M._generate_properties(self)
                                  _call("base.re_find",
                                        k, dump(pattern), dump("jo")))),
                         function()
-                            local var = Variable.new(
+                            local var = Var.new(
                                 _index(root(), k),
                                 _index(tostring(root), dump(pattern)))
                             self:emit(_assign(_index(keys(), k), "nil"))

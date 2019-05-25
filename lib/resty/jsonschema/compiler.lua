@@ -215,6 +215,7 @@ local mapping = {
     { "not", "not" },
     {
         {
+            { "length", "string_length" },
             { "minLength", "min_length" },
             { "maxLength", "max_length" },
             { "pattern", "pattern" },
@@ -651,6 +652,17 @@ function _M._generate_enum(self, enum)
     )
 
     self:free_variable(ok)
+end
+
+
+function _M._generate_string_length(self, n)
+    self:generate_code_block(
+        _if(_op(self._var:len(), "~=", dump(n))),
+        function()
+            self:generate_error(tostring(self._var),
+                                "must be equal to", dump(n), "characters")
+        end
+    )
 end
 
 

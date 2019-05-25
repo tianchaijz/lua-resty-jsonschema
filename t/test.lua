@@ -222,6 +222,7 @@ schema = {
                     type = "object",
                     properties = {
                         baz = { type = "string", },
+                        bazz = { type = "string", length = 1024 },
                     },
                     required = { "baz", },
                 },
@@ -237,12 +238,16 @@ schema = {
 obj = {
     foo = {
         bar1 = {
-            baz = "hi"
+            baz = "hi",
+            bazz = string.rep("x", 1024)
         }
     }
 }
 
 js = jsonschema.new(schema)
+
+-- print(js:code())
+
 jv = js:compile()
 
 ok, err = jv(obj)

@@ -230,6 +230,7 @@ schema = {
         },
         unique_array = {
             type = "array",
+            length = 2,
             uniqueItems = true,
         },
     },
@@ -241,7 +242,8 @@ obj = {
             baz = "hi",
             bazz = string.rep("x", 1024)
         }
-    }
+    },
+    unique_array = { 1, 2 },
 }
 
 js = jsonschema.new(schema)
@@ -251,4 +253,4 @@ js = jsonschema.new(schema)
 jv = js:compile()
 
 ok, err = jv(obj)
-assert(ok)
+assert(ok, err)

@@ -233,6 +233,7 @@ local mapping = {
     {
         {
             { "items", "items" },
+            { "length", "array_length" },
             { "minItems", "min_items" },
             { "maxItems", "max_items" },
             { "uniqueItems", "unique_items" },
@@ -685,6 +686,17 @@ function _M._generate_max_length(self, n)
             self:generate_error(tostring(self._var),
                                 "must be shorter than or equal to", dump(n),
                                 "characters")
+        end
+    )
+end
+
+
+function _M._generate_array_length(self, n)
+    self:generate_code_block(
+        _if(_op(self._var:len(), "~=", dump(n))),
+        function()
+            self:generate_error(tostring(self._var),
+                                "must contain", dump(n), "items")
         end
     )
 end

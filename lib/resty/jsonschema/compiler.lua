@@ -20,6 +20,9 @@ local setmetatable = setmetatable
 local ngx = ngx
 local re_find = ngx.re.find
 
+local table_new
+local table_nkeys
+
 
 local function is_str(obj) return type(obj) == "string" end
 local function is_num(obj) return type(obj) == "number" end
@@ -50,6 +53,26 @@ end
 
 local function is_array(obj) return is_tbl(obj) and table_type(obj) >= 0 end
 local function is_object(obj) return is_tbl(obj) and table_type(obj) <= 0 end
+
+
+do
+    local ok
+    ok, table_new = pcall(require, "table.new")
+    if not ok or type(table_new) ~= "function" then
+        table_new = function(narr, nrec) return {} end
+    end
+
+    ok, table_nkeys = pcall(require, "table.nkeys")
+    if not ok or type(table_nkeys) ~= "function" then
+        table_nkeys = function(t)
+            local n = 0
+            for _ in pairs(t) do
+                n = n + 1
+            end
+            return n
+        end
+    end
+end
 
 
 local Var = {}
@@ -243,6 +266,9 @@ local Base = {
     re_find = re_find,
     table_len = table_len,
     null = cjson.null,
+
+    table_new = table_new,
+    table_nkeys = table_nkeys,
 }
 
 _M.Base = Base
@@ -683,7 +709,7 @@ function _M._generate_unique_items(self, unique)
     local k = self:k()
     local mem = self:get_variable()
 
-    self:emit(_assign(mem(), "{}"))
+    self:emit(_assign(mem(), _call("base.table_new", "0", self._var:len())))
     self:generate_code_block(
         _for(_call("ipairs", self._var()), "_", k),
         function()
@@ -1067,7 +1093,8 @@ function _M._generate_properties(self)
         self:emit(_assign(root(), self._var()))
     end
 
-    self:emit(_assign(keys(), "{}"))
+    self:emit(_assign(keys(), _call("base.table_new", "0",
+                                    _call("base.table_nkeys", root()))))
     self:generate_code_block(
         _for(_call("pairs", root()), k),
         function()

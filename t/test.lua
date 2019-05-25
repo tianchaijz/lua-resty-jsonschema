@@ -227,6 +227,10 @@ schema = {
                 },
             },
         },
+        unique_array = {
+            type = "array",
+            uniqueItems = true,
+        },
     },
 }
 

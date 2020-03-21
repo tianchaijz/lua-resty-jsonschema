@@ -20,9 +20,6 @@ local setmetatable = setmetatable
 local ngx = ngx
 local re_find = ngx.re.find
 
-local table_new
-local table_nkeys
-
 
 local function is_str(obj) return type(obj) == "string" end
 local function is_num(obj) return type(obj) == "number" end
@@ -31,6 +28,7 @@ local function is_bool(obj) return type(obj) == "boolean" end
 local function is_nil(obj) return obj == nil end
 local function is_null(obj) return obj == cjson.null end
 local function is_int(obj) return is_num(obj) and floor(obj) == obj end
+
 
 local function table_type(obj)
     local max = 0
@@ -51,8 +49,12 @@ local function table_type(obj)
     return max
 end
 
-local function is_array(obj) return is_tbl(obj) and table_type(obj) >= 0 end
-local function is_object(obj) return is_tbl(obj) and table_type(obj) <= 0 end
+
+local table_new
+local table_nkeys
+local table_isarray
+local is_array
+local is_empty
 
 
 do
@@ -72,6 +74,28 @@ do
             return n
         end
     end
+
+    ok, table_isarray = pcall(require, "table.isarray")
+    if ok and type(table_isarray) == "function" then
+        is_array = function(obj)
+            return is_tbl(obj) and table_isarray(obj)
+        end
+    else
+        table_isarray = function(obj)
+            return is_tbl(obj) and table_type(obj) >= 0
+        end
+        is_array = table_isarray
+    end
+
+    ok, is_empty = pcall(require, "table.isempty")
+    if not ok or type(is_empty) ~= "function" then
+        is_empty = function(obj) return next(obj) ~= nil end
+    end
+end
+
+
+local function is_object(obj)
+    return is_tbl(obj) and (is_empty(obj) or not table_isarray(obj))
 end
 
 
@@ -261,6 +285,7 @@ local Base = {
     is_integer = is_int,
     is_boolean = is_bool,
     is_table = is_tbl,
+    is_empty = is_empty,
     is_array = is_array,
     is_object = is_object,
     equal = equal,
@@ -1180,7 +1205,7 @@ function _M._generate_properties(self)
 
     if parent.additionalProperties == false then
         self:generate_code_block(
-            _if(_op(_call("next", keys()), "~=", "nil")),
+            _if(_not(_call("base.is_empty", keys()))),
             function()
                 self:generate_error(tostring(self._var),
                                     "must contain only specified properties")

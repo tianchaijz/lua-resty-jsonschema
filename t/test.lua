@@ -148,12 +148,12 @@ local function test()
         local expect = case[3].valid
         if valid ~= expect then
             print(string.format("expect %s, but got %s", expect, valid))
-            if err then
-                print("got error: " .. err)
-            end
             print(case[2])
             print(cjson.encode(case[3]))
             print(case[4])
+            if err then
+                error(err)
+            end
             return
         end
     end
@@ -233,6 +233,24 @@ schema = {
             length = 2,
             uniqueItems = true,
         },
+        object = {
+            type = "object",
+            properties = {
+                foo = {},
+                bar = {},
+            },
+            additionalProperties = false
+        },
+        object2 = {
+            type = "object",
+            properties = {
+                foo = {},
+                bar = {},
+            },
+            additionalProperties = {
+                type = "boolean"
+            }
+        }
     },
 }
 
@@ -244,6 +262,8 @@ obj = {
         }
     },
     unique_array = { 1, 2 },
+    object = { foo = true, bar = {} },
+    object2 = { foo = true, bar = {}, baz = true },
 }
 
 js = jsonschema.new(schema)

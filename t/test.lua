@@ -230,7 +230,7 @@ schema = {
         },
         unique_array = {
             type = "array",
-            length = 2,
+            fixedItems = 2,
             uniqueItems = true,
         },
         object = {
@@ -274,3 +274,8 @@ jv = js:compile()
 
 ok, err = jv(obj)
 assert(ok, err)
+
+obj.unique_array[3] = 3
+ok, err = jv(obj)
+assert(not ok)
+assert(string.find(err, "must contain 2 items"))

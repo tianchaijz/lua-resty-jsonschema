@@ -257,7 +257,7 @@ local mapping = {
     {
         {
             { "items", "items" },
-            { "length", "array_length" },
+            { "fixedItems", "fixed_items" },
             { "minItems", "min_items" },
             { "maxItems", "max_items" },
             { "uniqueItems", "unique_items" },
@@ -716,7 +716,7 @@ function _M._generate_max_length(self, n)
 end
 
 
-function _M._generate_array_length(self, n)
+function _M._generate_fixed_items(self, n)
     self:generate_code_block(
         _if(_op(self._var:len(), "~=", dump(n))),
         function()
